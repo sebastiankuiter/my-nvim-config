@@ -28,7 +28,7 @@ return {
             ensure_installed = {
                 "lua_ls",
                 "rust_analyzer",
-                "gopls",
+		"clangd",
             },
             handlers = {
                 function(server_name) -- default handler (optional)
@@ -66,6 +66,13 @@ return {
                             }
                         }
                     }
+			lspconfig.clangd.setup {
+				on_attach = function (client, bufnr)
+					client.server_capabilities.signatureHelpProvider = false
+					on_attach(client, bufnr)
+				end,
+				capabilities = capabilities,
+			}
                 end,
             }
         })
