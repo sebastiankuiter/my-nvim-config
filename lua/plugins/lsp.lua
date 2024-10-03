@@ -16,6 +16,7 @@ return {
     config = function()
         local cmp = require('cmp')
         local cmp_lsp = require("cmp_nvim_lsp")
+        local luasnip = require 'luasnip'
 
         local capabilities = vim.tbl_deep_extend(
             "force",
@@ -29,7 +30,7 @@ return {
             ensure_installed = {
                 "lua_ls",
                 "rust_analyzer",
-		"clangd",
+                "clangd",
             },
             handlers = {
                 function(server_name) -- default handler (optional)
@@ -67,13 +68,22 @@ return {
                             }
                         }
                     }
-			lspconfig.clangd.setup {
-				on_attach = function (client, bufnr)
-					client.server_capabilities.signatureHelpProvider = false
-					on_attach(client, bufnr)
-				end,
-				capabilities = capabilities,
-			}
+                    lspconfig.clangd.setup {
+                        on_attach = function (client, bufnr)
+                            -- client.server_capabilities.signatureHelpProvider = false
+                            -- on_attach(client, bufnr)
+                            -- Enable key mappings for LSP features
+                            local function buf_set_keymap(...) vim.api.nvim_buf_set_keymap(bufnr, ...) end
+                            local opts = { noremap=true, silent=true }
+
+                            -- Key mappings for "Go to definition", "Go to declaration", etc.
+                            buf_set_keymap('n', 'gd', '<Cmd>lua vim.lsp.buf.definition()<CR>', opts)
+                            buf_set_keymap('n', 'gD', '<Cmd>lua vim.lsp.buf.declaration()<CR>', opts)
+                            buf_set_keymap('n', 'gi', '<Cmd>lua vim.lsp.buf.implementation()<CR>', opts)
+                            buf_set_keymap('n', 'gr', '<Cmd>lua vim.lsp.buf.references()<CR>', opts)
+                        end,
+                        capabilities = capabilities,
+                    }
                 end,
             }
         })
@@ -91,13 +101,22 @@ return {
                 ['<C-n>'] = cmp.mapping.select_next_item(cmp_select),
                 ['<C-y>'] = cmp.mapping.confirm({ select = true }),
                 ["<C-Space>"] = cmp.mapping.complete(),
+                ['<Tab>'] = cmp.mapping(function(fallback)
+                    if cmp.visible() then
+                        cmp.select_next_item()
+                    elseif luasnip.expand_or_jumpable() then
+                        luasnip.expand_or_jump()
+                    else
+                        fallback()
+                    end
+                end, { 'i', 's' }),
             }),
             sources = cmp.config.sources({
                 { name = 'nvim_lsp' },
                 { name = 'luasnip' }, -- For luasnip users.
             }, {
-                { name = 'buffer' },
-            })
+                    { name = 'buffer' },
+                })
         })
 
         vim.diagnostic.config({
