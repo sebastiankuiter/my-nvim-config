@@ -18,12 +18,33 @@ return {
         local cmp_lsp = require("cmp_nvim_lsp")
         local luasnip = require 'luasnip'
 
+        -- Set up LSP capabilities
         local capabilities = vim.tbl_deep_extend(
             "force",
             {},
             vim.lsp.protocol.make_client_capabilities(),
-            cmp_lsp.default_capabilities())
+            cmp_lsp.default_capabilities()
+        )
 
+        -- Shared on_attach function
+        local on_attach = function(client, bufnr)
+            local function buf_set_keymap(...) vim.api.nvim_buf_set_keymap(bufnr, ...) end
+            local opts = { noremap = true, silent = true }
+
+            -- Key mappings for LSP functionalities
+            buf_set_keymap('n', 'gd', '<Cmd>lua vim.lsp.buf.definition()<CR>', opts)
+            buf_set_keymap('n', 'gD', '<Cmd>lua vim.lsp.buf.declaration()<CR>', opts)
+            buf_set_keymap('n', 'gi', '<Cmd>lua vim.lsp.buf.implementation()<CR>', opts)
+            buf_set_keymap('n', 'gr', '<Cmd>lua vim.lsp.buf.references()<CR>', opts)
+            buf_set_keymap('n', 'K', '<Cmd>lua vim.lsp.buf.hover()<CR>', opts)
+            buf_set_keymap('n', '<leader>rn', '<Cmd>lua vim.lsp.buf.rename()<CR>', opts)
+            buf_set_keymap('n', '<leader>ca', '<Cmd>lua vim.lsp.buf.code_action()<CR>', opts)
+            buf_set_keymap('n', '[d', '<Cmd>lua vim.diagnostic.goto_prev()<CR>', opts)
+            buf_set_keymap('n', ']d', '<Cmd>lua vim.diagnostic.goto_next()<CR>', opts)
+            buf_set_keymap('n', '<leader>e', '<Cmd>lua vim.diagnostic.open_float()<CR>', opts)
+        end
+
+        -- LSP server configuration
         require("fidget").setup({})
         require("mason").setup()
         require("mason-lspconfig").setup({
@@ -33,8 +54,9 @@ return {
                 "clangd",
             },
             handlers = {
-                function(server_name) -- default handler (optional)
+                function(server_name) -- default handler
                     require("lspconfig")[server_name].setup {
+                        on_attach = on_attach,
                         capabilities = capabilities
                     }
                 end,
@@ -53,11 +75,12 @@ return {
                     })
                     vim.g.zig_fmt_parse_errors = 0
                     vim.g.zig_fmt_autosave = 0
-
                 end,
+
                 ["lua_ls"] = function()
                     local lspconfig = require("lspconfig")
                     lspconfig.lua_ls.setup {
+                        on_attach = on_attach,
                         capabilities = capabilities,
                         settings = {
                             Lua = {
@@ -68,32 +91,28 @@ return {
                             }
                         }
                     }
-                    lspconfig.clangd.setup {
-                        on_attach = function (client, bufnr)
-                            -- client.server_capabilities.signatureHelpProvider = false
-                            -- on_attach(client, bufnr)
-                            -- Enable key mappings for LSP features
-                            local function buf_set_keymap(...) vim.api.nvim_buf_set_keymap(bufnr, ...) end
-                            local opts = { noremap=true, silent=true }
+                end,
 
-                            -- Key mappings for "Go to definition", "Go to declaration", etc.
-                            buf_set_keymap('n', 'gd', '<Cmd>lua vim.lsp.buf.definition()<CR>', opts)
-                            buf_set_keymap('n', 'gD', '<Cmd>lua vim.lsp.buf.declaration()<CR>', opts)
-                            buf_set_keymap('n', 'gi', '<Cmd>lua vim.lsp.buf.implementation()<CR>', opts)
-                            buf_set_keymap('n', 'gr', '<Cmd>lua vim.lsp.buf.references()<CR>', opts)
-                        end,
+                ["clangd"] = function()
+                    require("lspconfig").clangd.setup({
+                        on_attach = on_attach,
                         capabilities = capabilities,
-                    }
+                        settings = {
+                            clangd = {
+                                -- Your clangd specific settings here
+                            }
+                        }
+                    })
                 end,
             }
         })
 
+        -- Completion setup with cmp
         local cmp_select = { behavior = cmp.SelectBehavior.Select }
-
         cmp.setup({
             snippet = {
                 expand = function(args)
-                    require('luasnip').lsp_expand(args.body) -- For `luasnip` users.
+                    luasnip.lsp_expand(args.body)
                 end,
             },
             mapping = cmp.mapping.preset.insert({
@@ -113,14 +132,14 @@ return {
             }),
             sources = cmp.config.sources({
                 { name = 'nvim_lsp' },
-                { name = 'luasnip' }, -- For luasnip users.
+                { name = 'luasnip' },
             }, {
-                    { name = 'buffer' },
-                })
+                { name = 'buffer' },
+            })
         })
 
+        -- Diagnostics configuration
         vim.diagnostic.config({
-            -- update_in_insert = true,
             float = {
                 focusable = false,
                 style = "minimal",
