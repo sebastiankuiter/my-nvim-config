@@ -42,6 +42,7 @@ return {
             buf_set_keymap('n', '[d', '<Cmd>lua vim.diagnostic.goto_prev()<CR>', opts)
             buf_set_keymap('n', ']d', '<Cmd>lua vim.diagnostic.goto_next()<CR>', opts)
             buf_set_keymap('n', '<leader>e', '<Cmd>lua vim.diagnostic.open_float()<CR>', opts)
+            buf_set_keymap('n', 'ca', '<Cmd>lua vim.lsp.buf.code_action()<CR>', opts)
         end
 
         -- LSP server configuration
@@ -102,6 +103,14 @@ return {
                             clangd = {
                                 -- Your clangd specific settings here
                             }
+                        },
+                        handlers = {
+                            ["textDocument/publishDiagnostics"] = vim.lsp.with(
+                                vim.lsp.diagnostic.on_publish_diagnostics, {
+                                    -- Disable virtual_text
+                                    virtual_text = true
+                               }
+                             ),
                         }
                     })
                 end,
@@ -121,15 +130,15 @@ return {
                 ['<C-n>'] = cmp.mapping.select_next_item(cmp_select),
                 ['<C-y>'] = cmp.mapping.confirm({ select = true }),
                 ["<C-Space>"] = cmp.mapping.complete(),
-                ['<Tab>'] = cmp.mapping(function(fallback)
-                    if cmp.visible() then
-                        cmp.select_next_item()
-                    elseif luasnip.expand_or_jumpable() then
-                        luasnip.expand_or_jump()
-                    else
-                        fallback()
-                    end
-                end, { 'i', 's' }),
+                --['<Tab>'] = cmp.mapping(function(fallback)
+                --    if cmp.visible() then
+                --        cmp.select_next_item()
+                --    elseif luasnip.expand_or_jumpable() then
+                --        luasnip.expand_or_jump()
+                --    else
+                --        fallback()
+                --    end
+                --end, { 'i', 's' }),
             }),
             sources = cmp.config.sources({
                 { name = 'nvim_lsp' },
