@@ -30,6 +30,7 @@ return {
     local on_attach = function(client, bufnr)
       local function buf_set_keymap(...) vim.api.nvim_buf_set_keymap(bufnr, ...) end
       local opts = { noremap = true, silent = true }
+      vim.bo[bufnr].formatexpr = "v:lua.vim.lsp.formatexpr()"
 
       -- Key mappings for LSP functionalities
       buf_set_keymap('n', 'gd', '<Cmd>lua vim.lsp.buf.definition()<CR>', opts)
@@ -44,8 +45,21 @@ return {
       buf_set_keymap('n', '<leader>e', '<Cmd>lua vim.diagnostic.open_float()<CR>', opts)
       buf_set_keymap('n', 'ca', '<Cmd>lua vim.lsp.buf.code_action()<CR>', opts)
       -- keybinding for formatting of buffer
-      buf_set_keymap('n', '+', '<cmd>lua vim.lsp.buf.format({ async = true })<CR>', opts)
+      --      buf_set_keymap('n', '+', '<cmd>lua vim.lsp.buf.format({ async = true })<CR>', opts)
+      buf_set_keymap('n', '+',
+        '<cmd>lua vim.lsp.buf.format({ async = true, filter = function(c) return c.name == "clangd" end })<CR>', opts)
       -- auto formatting on save
+      -- vim.api.nvim_create_autocmd("BufWritePre", {
+      --   buffer = bufnr,
+      --   callback = function()
+      --     vim.lsp.buf.format({
+      --       async = false,
+      --       filter = function(c)
+      --         return c.name == "clangd"
+      --       end,
+      --     })
+      --   end,
+      -- })
       vim.api.nvim_create_autocmd("BufWritePre", {
         buffer = bufnr,
         callback = function()
@@ -104,7 +118,9 @@ return {
         end,
 
         ["clangd"] = function()
-          require("lspconfig").clangd.setup({
+          local lspconfig = require("lspconfig")
+          lspconfig.clangd.setup({
+            cmd = { "clangd", "--fallback-style=none" },
             init_options = { fallbackFlags = { '--std=c++11' } },
             on_attach = on_attach,
             capabilities = capabilities,
@@ -113,6 +129,7 @@ return {
                 -- Your clangd specific settings here
               }
             },
+            root_dir = lspconfig.util.root_pattern(".clang-format", ".git", ".clangd"),
             handlers = {
               ["textDocument/publishDiagnostics"] = vim.lsp.with(
                 vim.lsp.diagnostic.on_publish_diagnostics, {
@@ -153,8 +170,8 @@ return {
         { name = 'nvim_lsp' },
         { name = 'luasnip' },
       }, {
-          { name = 'buffer' },
-        })
+        { name = 'buffer' },
+      })
     })
 
     -- Diagnostics configuration
