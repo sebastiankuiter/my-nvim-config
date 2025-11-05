@@ -76,70 +76,84 @@ return {
         "lua_ls",
         "rust_analyzer",
         "clangd",
+        "ts_ls"
       },
       handlers = {
-        function(server_name) -- default handler
-          require("lspconfig")[server_name].setup {
-            on_attach = on_attach,
-            capabilities = capabilities
-          }
-        end,
+        function(server_name)
+          local ok, config = pcall(require, "lsp." .. server_name)
+          if not ok then
+            vim.notify("No custom config for " .. server_name .. ", using default", vim.log.levels.INFO)
+            config = {}
+          end
 
-        zls = function()
-          local lspconfig = require("lspconfig")
-          lspconfig.zls.setup({
-            root_dir = lspconfig.util.root_pattern(".git", "build.zig", "zls.json"),
-            settings = {
-              zls = {
-                enable_inlay_hints = true,
-                enable_snippets = true,
-                warn_style = true,
-              },
-            },
-          })
-          vim.g.zig_fmt_parse_errors = 0
-          vim.g.zig_fmt_autosave = 0
-        end,
+          -- Inject shared on_attach/capabilities if not present
+          config.on_attach = config.on_attach or on_attach
+          config.capabilities = vim.tbl_deep_extend("force", capabilities, config.capabilities or {})
 
-        ["lua_ls"] = function()
-          local lspconfig = require("lspconfig")
-          lspconfig.lua_ls.setup {
-            on_attach = on_attach,
-            capabilities = capabilities,
-            settings = {
-              Lua = {
-                runtime = { version = "Lua 5.1" },
-                diagnostics = {
-                  globals = { "bit", "vim", "it", "describe", "before_each", "after_each" },
-                }
-              }
-            }
-          }
+          require("lspconfig")[server_name].setup(config)
         end,
+        -- function(server_name) -- default handler
+        --   require("lspconfig")[server_name].setup {
+        --     on_attach = on_attach,
+        --     capabilities = capabilities
+        --   }
+        -- end,
 
-        ["clangd"] = function()
-          local lspconfig = require("lspconfig")
-          lspconfig.clangd.setup({
-            cmd = { "clangd", "--fallback-style=none" },
-            init_options = { fallbackFlags = { '--std=c++11' } },
-            on_attach = on_attach,
-            capabilities = capabilities,
-            settings = {
-              clangd = {
-                -- Your clangd specific settings here
-              }
-            },
-            root_dir = lspconfig.util.root_pattern(".clang-format", ".git", ".clangd"),
-            handlers = {
-              ["textDocument/publishDiagnostics"] = vim.lsp.with(
-                vim.lsp.diagnostic.on_publish_diagnostics, {
-                  -- Disable virtual_text
-                  virtual_text = true
-                }
-              ),
-            }
-          })
-        end,
+        -- zls = function()
+        --   local lspconfig = require("lspconfig")
+        --   lspconfig.zls.setup({
+        --     root_dir = lspconfig.util.root_pattern(".git", "build.zig", "zls.json"),
+        --     settings = {
+        --       zls = {
+        --         enable_inlay_hints = true,
+        --         enable_snippets = true,
+        --         warn_style = true,
+        --       },
+        --     },
+        --   })
+        --   vim.g.zig_fmt_parse_errors = 0
+        --   vim.g.zig_fmt_autosave = 0
+        -- end,
+
+        -- ["lua_ls"] = function()
+        --   local lspconfig = require("lspconfig")
+        --   lspconfig.lua_ls.setup {
+        --     on_attach = on_attach,
+        --     capabilities = capabilities,
+        --     settings = {
+        --       Lua = {
+        --         runtime = { version = "Lua 5.1" },
+        --         diagnostics = {
+        --           globals = { "bit", "vim", "it", "describe", "before_each", "after_each" },
+        --         }
+        --       }
+        --     }
+        --   }
+        -- end,
+
+        -- ["clangd"] = function()
+        --   local lspconfig = require("lspconfig")
+        --   lspconfig.clangd.setup({
+        --     cmd = { "clangd", "--fallback-style=none" },
+        --     init_options = { fallbackFlags = { '--std=c++11' } },
+        --     on_attach = on_attach,
+        --     capabilities = capabilities,
+        --     settings = {
+        --       clangd = {
+        --         -- Your clangd specific settings here
+        --       }
+        --     },
+        --     root_dir = lspconfig.util.root_pattern(".clang-format", ".git", ".clangd"),
+        --     handlers = {
+        --       ["textDocument/publishDiagnostics"] = vim.lsp.with(
+        --         vim.lsp.diagnostic.on_publish_diagnostics, {
+        --           -- Disable virtual_text
+        --           virtual_text = true
+        --         }
+        --       ),
+        --     }
+        --   })
+        -- end,
       }
     })
 
